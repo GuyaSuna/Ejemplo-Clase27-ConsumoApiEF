@@ -1,20 +1,11 @@
 "use client";
 
-import { FormEvent, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { testConection } from "./Api/api";
-type Turno = {
-  id: number;
-  nombrePaciente: string;
-  especialidad: string;
-  fecha: string;
-  confirmado: boolean;
-};
-
-type FormularioTurno = Omit<Turno, "id">;
 
 const apiInicial = "https://localhost:7156/turnos";
 
-const nuevoTurno = (): FormularioTurno => ({
+const nuevoTurno = () => ({
   nombrePaciente: "",
   especialidad: "",
   fecha: "",
@@ -23,9 +14,9 @@ const nuevoTurno = (): FormularioTurno => ({
 
 export default function Home() {
   const [apiUrl, setApiUrl] = useState(apiInicial);
-  const [turnos, setTurnos] = useState<Turno[]>([]);
-  const [formulario, setFormulario] = useState<FormularioTurno>(nuevoTurno);
-  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [turnos, setTurnos] = useState([]);
+  const [formulario, setFormulario] = useState(nuevoTurno);
+  const [editandoId, setEditandoId] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("Conectá tu API y cargá los turnos.");
@@ -40,13 +31,11 @@ export default function Home() {
 
   const url = () => apiUrl.replace(/\/$/, "");
 
-  async function leerError(respuesta: Response) {
+  async function leerError(respuesta) {
     const contenido = await respuesta.text();
+
     try {
-      const json = JSON.parse(contenido) as {
-        message?: string;
-        title?: string;
-      };
+      const json = JSON.parse(contenido);
       return json.message ?? json.title ?? contenido;
     } catch {
       return contenido || `Error ${respuesta.status}`;
@@ -56,34 +45,47 @@ export default function Home() {
   async function cargarTurnos() {
     setCargando(true);
     setMensaje("");
+
     try {
       const respuesta = await fetch(url());
-      if (!respuesta.ok) throw new Error(await leerError(respuesta));
-      const datos = (await respuesta.json()) as Turno[];
+
+      if (!respuesta.ok) {
+        throw new Error(await leerError(respuesta));
+      }
+
+      const datos = await respuesta.json();
+
       setTurnos(datos);
+
       setMensaje(
-        `${datos.length} turno${datos.length === 1 ? "" : "s"} cargado${datos.length === 1 ? "" : "s"}.`,
+        `${datos.length} turno${datos.length === 1 ? "" : "s"} cargado${
+          datos.length === 1 ? "" : "s"
+        }.`
       );
     } catch (error) {
       setMensaje(
-        `No se pudieron cargar los turnos: ${error instanceof Error ? error.message : "error de conexión"}`,
+        `No se pudieron cargar los turnos: ${
+          error instanceof Error ? error.message : "error de conexión"
+        }`
       );
     } finally {
       setCargando(false);
     }
   }
 
-  function actualizarCampo<K extends keyof FormularioTurno>(
-    campo: K,
-    valor: FormularioTurno[K],
-  ) {
-    setFormulario((actual) => ({ ...actual, [campo]: valor }));
+  function actualizarCampo(campo, valor) {
+    setFormulario((actual) => ({
+      ...actual,
+      [campo]: valor,
+    }));
   }
 
-  async function guardarTurno(evento: FormEvent<HTMLFormElement>) {
+  async function guardarTurno(evento) {
     evento.preventDefault();
+
     setGuardando(true);
     setMensaje("");
+
     const esEdicion = editandoId !== null;
 
     try {
@@ -91,55 +93,76 @@ export default function Home() {
         esEdicion ? `${url()}/${editandoId}` : url(),
         {
           method: esEdicion ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             ...formulario,
             fecha: new Date(formulario.fecha).toISOString(),
           }),
-        },
+        }
       );
-      if (!respuesta.ok) throw new Error(await leerError(respuesta));
+
+      if (!respuesta.ok) {
+        throw new Error(await leerError(respuesta));
+      }
+
       setFormulario(nuevoTurno());
       setEditandoId(null);
+
       setMensaje(
         esEdicion
           ? "Turno actualizado correctamente."
-          : "Turno creado correctamente.",
+          : "Turno creado correctamente."
       );
+
       await cargarTurnos();
     } catch (error) {
       setMensaje(
-        `No se pudo guardar el turno: ${error instanceof Error ? error.message : "error de conexión"}`,
+        `No se pudo guardar el turno: ${
+          error instanceof Error ? error.message : "error de conexión"
+        }`
       );
     } finally {
       setGuardando(false);
     }
   }
 
-  function editarTurno(turno: Turno) {
+  function editarTurno(turno) {
     setEditandoId(turno.id);
+
     setFormulario({
       nombrePaciente: turno.nombrePaciente,
       especialidad: turno.especialidad,
       fecha: turno.fecha.slice(0, 16),
       confirmado: turno.confirmado,
     });
+
     setMensaje(`Editando el turno de ${turno.nombrePaciente}.`);
   }
 
-  async function eliminarTurno(turno: Turno) {
-    if (!window.confirm(`¿Eliminar el turno de ${turno.nombrePaciente}?`))
+  async function eliminarTurno(turno) {
+    if (!window.confirm(`¿Eliminar el turno de ${turno.nombrePaciente}?`)) {
       return;
+    }
+
     try {
       const respuesta = await fetch(`${url()}/${turno.id}`, {
         method: "DELETE",
       });
-      if (!respuesta.ok) throw new Error(await leerError(respuesta));
+
+      if (!respuesta.ok) {
+        throw new Error(await leerError(respuesta));
+      }
+
       setMensaje("Turno eliminado correctamente.");
+
       await cargarTurnos();
     } catch (error) {
       setMensaje(
-        `No se pudo eliminar el turno: ${error instanceof Error ? error.message : "error de conexión"}`,
+        `No se pudo eliminar el turno: ${
+          error instanceof Error ? error.message : "error de conexión"
+        }`
       );
     }
   }
@@ -156,15 +179,17 @@ export default function Home() {
 
       <section className="conexion" aria-label="Configuración de la API">
         <label htmlFor="api-url">URL de la API</label>
+
         <input
           id="api-url"
           value={apiUrl}
           onChange={(e) => setApiUrl(e.target.value)}
         />
+
         <button
           type="button"
           className="secundario"
-          onClick={() => void cargarTurnos()}
+          onClick={cargarTurnos}
           disabled={cargando}
         >
           {cargando ? "Cargando..." : "Recargar"}
@@ -179,6 +204,7 @@ export default function Home() {
         <section className="tarjeta formulario">
           <div className="titulo-seccion">
             <h2>{editandoId === null ? "Nuevo turno" : "Editar turno"}</h2>
+
             {editandoId !== null && (
               <button
                 type="button"
@@ -192,6 +218,7 @@ export default function Home() {
               </button>
             )}
           </div>
+
           <form onSubmit={guardarTurno}>
             <label htmlFor="paciente">Nombre del paciente</label>
             <input
@@ -232,12 +259,13 @@ export default function Home() {
               />{" "}
               Turno confirmado
             </label>
+
             <button className="principal" disabled={guardando}>
               {guardando
                 ? "Guardando..."
                 : editandoId === null
-                  ? "Crear turno"
-                  : "Guardar cambios"}
+                ? "Crear turno"
+                : "Guardar cambios"}
             </button>
           </form>
         </section>
@@ -247,6 +275,7 @@ export default function Home() {
             <h2>Turnos registrados</h2>
             <span>{turnos.length}</span>
           </div>
+
           {turnos.length === 0 ? (
             <p className="vacio">No hay turnos para mostrar.</p>
           ) : (
@@ -263,6 +292,7 @@ export default function Home() {
                       }).format(new Date(turno.fecha))}
                     </p>
                   </div>
+
                   <div className="acciones">
                     <span
                       className={
@@ -273,6 +303,7 @@ export default function Home() {
                     >
                       {turno.confirmado ? "Confirmado" : "Pendiente"}
                     </span>
+
                     <button
                       type="button"
                       className="enlace"
@@ -280,10 +311,11 @@ export default function Home() {
                     >
                       Editar
                     </button>
+
                     <button
                       type="button"
                       className="peligro"
-                      onClick={() => void eliminarTurno(turno)}
+                      onClick={() => eliminarTurno(turno)}
                     >
                       Eliminar
                     </button>
