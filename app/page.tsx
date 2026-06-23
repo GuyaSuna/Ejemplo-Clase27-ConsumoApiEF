@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-
+import { FormEvent, useState, useEffect } from "react";
+import { testConection } from "./Api/api";
 type Turno = {
   id: number;
   nombrePaciente: string;
@@ -12,8 +12,7 @@ type Turno = {
 
 type FormularioTurno = Omit<Turno, "id">;
 
-const apiInicial =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/turnos";
+const apiInicial = "https://localhost:7156/turnos";
 
 const nuevoTurno = (): FormularioTurno => ({
   nombrePaciente: "",
@@ -30,6 +29,14 @@ export default function Home() {
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("Conectá tu API y cargá los turnos.");
+
+  const testConectionFront = async () => {
+    console.log("testConection", await testConection());
+  };
+
+  useEffect(() => {
+    testConectionFront();
+  }, []);
 
   const url = () => apiUrl.replace(/\/$/, "");
 
